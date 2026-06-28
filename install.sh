@@ -30,6 +30,26 @@ BIN_PATH="/usr/local/bin/realm-bin"
 # 快捷管理命令路径 (用户输入 realm 即运行此脚本)
 MENU_PATH="/usr/local/bin/realm"
 
+# 安装快捷管理命令：优先复制当前脚本，失败时回退到 GitHub 下载，并校验结果非空
+install_menu_script() {
+    local src="${BASH_SOURCE[0]}"
+
+    if [[ -n "$src" && -f "$src" && -s "$src" ]]; then
+        cp "$src" "$MENU_PATH"
+    else
+        curl -fLso "$MENU_PATH" "$SCRIPT_URL"
+    fi
+
+    chmod +x "$MENU_PATH"
+
+    if [[ ! -s "$MENU_PATH" ]]; then
+        echo -e "${RED}快捷命令安装失败：$MENU_PATH 为空文件。${PLAIN}"
+        return 1
+    fi
+
+    return 0
+}
+
 # 1. 安装 Realm
 install_realm() {
     echo -e "${GREEN}正在开始安装 Realm...${PLAIN}"
@@ -57,10 +77,12 @@ install_realm() {
     mv realm "$BIN_PATH"
     rm realm.tar.gz
 
-    # 将当前脚本自身复制为快捷命令
+    # 安装快捷命令
     echo -e "${GREEN}正在配置快捷管理命令...${PLAIN}"
-    cp "$0" "$MENU_PATH"
-    chmod +x "$MENU_PATH"
+    if ! install_menu_script; then
+        echo -e "${RED}请检查网络或脚本来源后重试。${PLAIN}"
+        exit 1
+    fi
 
     # 创建配置目录
     mkdir -p /etc/realm
