@@ -1,16 +1,18 @@
-# Realm 一键安装与配置脚本
+﻿# Realm 一键安装与配置脚本
 
 这是一个专为 Bandwagon Host (BWG) 及其他 Linux VPS 设计的 Realm 一键管理脚本。它可以帮助你快速搭建端口转发中转服务。
 
-视频教程：https://youtu.be/gtUFnTTsiHQ
+> 本项目基于 [playfulsoul/realm-installer](https://github.com/playfulsoul/realm-installer) 修改，新增了删除和修改转发规则功能。
 
 ## ✨ 功能特点
 
 - 🚀 **自动安装**: 自动检测 CPU 架构并下载最新版 Realm。
 - ⚙️ **交互配置**: 无需手写配置文件，通过菜单输入 IP 和端口即可。
-- 🔥 **防火墙管理**: 添加规则时自动放行 UFW 端口。
+- 🔥 **防火墙管理**: 添加/删除规则时自动同步 UFW 端口开关。
 - 🔄 **服务管理**: 自动配置 Systemd 开机自启。
 - ⚡️ **快捷管理**: 安装后输入 `realm` 即可随时管理。
+- 🗑️ **删除规则**: 按编号删除任意转发规则，自动关闭对应防火墙端口。
+- ✏️ **修改规则**: 按编号修改任意转发规则的 IP 或端口。
 
 ## 🛠 使用方法
 
@@ -19,7 +21,7 @@
 登录你的 VPS，运行以下命令即可：
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/playfulsoul/realm-installer/main/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/coolwenshuyan/realm-installer/main/install.sh)
 ```
 
 ### 2. 快捷菜单
@@ -34,9 +36,11 @@ realm
 
 1. **安装 Realm**: 首次运行请选择此项。
 2. **添加转发规则**: 输入监听端口、落地 IP 和落地端口。
-3. **查看运行状态**: 检查服务是否正常，并显示当前的转发配置。
-4. **更新本脚本**: 如果 GitHub 仓库有更新，点击此项自动同步。
-5. **卸载 Realm**: 清理所有文件。
+3. **删除转发规则**: 显示现有规则列表，按编号删除，自动关闭对应防火墙端口。
+4. **修改转发规则**: 显示现有规则列表，按编号修改监听端口或落地地址。
+5. **查看运行状态**: 检查服务是否正常，并显示当前的转发配置。
+6. **更新本脚本**: 从 GitHub 拉取最新版本。
+7. **卸载 Realm**: 清理所有文件。
 
 ## 📝 常见问题
 
@@ -47,4 +51,7 @@ A: 请检查落地机的防火墙是否允许了中转机的 IP 连接。
 A: 支持。脚本默认开启 TCP + UDP 双协议转发，完美支持 Hysteria2 和游戏加速。
 
 **Q: 怎么修改已有的规则？**
-A: 目前脚本仅支持追加规则。如需修改，请手动编辑 `/etc/realm/config.toml` 然后运行 `systemctl restart realm`。
+A: 在菜单中选择 **4. 修改转发规则**，按编号选择后重新输入 IP 和端口即可，无需手动编辑配置文件。
+
+**Q: 系统要求？**
+A: 需要 Debian / Ubuntu 系统，并以 root 用户运行。支持 x86_64 和 aarch64 架构。
