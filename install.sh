@@ -74,23 +74,17 @@ install_realm() {
 
     # 下载并安装 Realm 核心程序（多镜像容灾与完整性校验）
     local mirrors=(
-        "https://gh-proxy.com"
-        "https://ghps.cc"
-        "https://mirror.ghproxy.com"
-        ""
+        "https://cdn.jsdelivr.net/gh/coolwenshuyan/realm-installer@main"
+        "https://gh-proxy.com/https://github.com/zhboner/realm/releases/latest/download"
+        "https://ghps.cc/https://github.com/zhboner/realm/releases/latest/download"
+        "https://github.com/zhboner/realm/releases/latest/download"
     )
     local success=0
     for mirror in "${mirrors[@]}"; do
-        local url=""
-        if [[ -n "$mirror" ]]; then
-            url="${mirror}/https://github.com/zhboner/realm/releases/latest/download/realm-${ARCH}-unknown-linux-gnu.tar.gz"
-            echo -e "${YELLOW}正在尝试从镜像 ${mirror} 下载...${PLAIN}"
-        else
-            url="https://github.com/zhboner/realm/releases/latest/download/realm-${ARCH}-unknown-linux-gnu.tar.gz"
-            echo -e "${YELLOW}正在尝试从 GitHub 直连下载...${PLAIN}"
-        fi
+        local url="${mirror}/realm-${ARCH}-unknown-linux-gnu.tar.gz"
+        echo -e "${YELLOW}正在从 ${mirror} 下载核心组件...${PLAIN}"
 
-        if curl -L --retry 2 --connect-timeout 8 -m 45 -o realm.tar.gz "$url" 2>/dev/null && tar -ztvf realm.tar.gz >/dev/null 2>&1; then
+        if curl -fL --retry 1 --connect-timeout 5 -m 30 -o realm.tar.gz "$url" && tar -ztvf realm.tar.gz >/dev/null 2>&1; then
             success=1
             echo -e "${GREEN}下载并校验成功！${PLAIN}"
             break
