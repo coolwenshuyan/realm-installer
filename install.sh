@@ -54,28 +54,60 @@ install_menu_script() {
 install_realm() {
     echo -e "${GREEN}正在开始安装 Realm...${PLAIN}"
     
-    # 更新系统并安装必要工具
-    apt-get update -y
-    apt-get install -y wget tar ufw curl
+    # 优先配置 IPv4，防止因机房 IPv6 路由缺失导致漫长超时
+    if [[ -f /etc/gai.conf ]]; then
+        sed -i 's/#precedence ::ffff:0:0\/96  100/precedence ::ffff:0:0\/96  100/' /etc/gai.conf 2>/dev/null || true
+    fi
+
+    # 必要工具检查（仅在缺少工具时才更新并安装）
+    if ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+        apt-get update -y
+        apt-get install -y wget tar ufw curl
+    fi
 
     # 检测架构
     ARCH=$(uname -m)
-    if [[ $ARCH == "x86_64" ]]; then
-        DOWNLOAD_URL="https://github.com/zhboner/realm/releases/latest/download/realm-x86_64-unknown-linux-gnu.tar.gz"
-    elif [[ $ARCH == "aarch64" ]]; then
-        DOWNLOAD_URL="https://github.com/zhboner/realm/releases/latest/download/realm-aarch64-unknown-linux-gnu.tar.gz"
-    else
+    if [[ $ARCH != "x86_64" && $ARCH != "aarch64" ]]; then
         echo -e "${RED}不支持的架构: $ARCH${PLAIN}"
         exit 1
     fi
 
-    # 下载并安装 Realm 核心程序
-    wget -O realm.tar.gz "$DOWNLOAD_URL"
-    tar -xvf realm.tar.gz
+    # 下载并安装 Realm 核心程序（多镜像容灾与完整性校验）
+    local mirrors=(
+        "https://gh-proxy.com"
+        "https://ghps.cc"
+        "https://mirror.ghproxy.com"
+        ""
+    )
+    local success=0
+    for mirror in "${mirrors[@]}"; do
+        local url=""
+        if [[ -n "$mirror" ]]; then
+            url="${mirror}/https://github.com/zhboner/realm/releases/latest/download/realm-${ARCH}-unknown-linux-gnu.tar.gz"
+            echo -e "${YELLOW}正在尝试从镜像 ${mirror} 下载...${PLAIN}"
+        else
+            url="https://github.com/zhboner/realm/releases/latest/download/realm-${ARCH}-unknown-linux-gnu.tar.gz"
+            echo -e "${YELLOW}正在尝试从 GitHub 直连下载...${PLAIN}"
+        fi
+
+        if curl -L --retry 2 --connect-timeout 8 -m 45 -o realm.tar.gz "$url" 2>/dev/null && tar -ztvf realm.tar.gz >/dev/null 2>&1; then
+            success=1
+            echo -e "${GREEN}下载并校验成功！${PLAIN}"
+            break
+        fi
+        rm -f realm.tar.gz
+    done
+
+    if [[ $success -ne 1 ]]; then
+        echo -e "${RED}下载失败或安装包校验失败，请检查网络后重试！${PLAIN}"
+        exit 1
+    fi
+
+    tar -zxvf realm.tar.gz
     chmod +x realm
     # 移动并重命名为 realm-bin
     mv realm "$BIN_PATH"
-    rm realm.tar.gz
+    rm -f realm.tar.gz
 
     # 安装快捷命令
     echo -e "${GREEN}正在配置快捷管理命令...${PLAIN}"
@@ -101,14 +133,13 @@ EOF
 [Unit]
 Description=realm
 After=network-online.target
-Wants=network-online.target systemd-networkd-wait-online.service
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
 Restart=on-failure
 RestartSec=5s
-DynamicUser=true
 ExecStart=$BIN_PATH -c $CONFIG_FILE
 
 [Install]
